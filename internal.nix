@@ -32,9 +32,30 @@ rec {
       rev = builtins.elemAt parts 6;
     };
 
+  parseGitRef = str:
+    let
+      parts = builtins.split "#" str;
+    in
+    assert !(builtins.length parts == 3) ->
+      builtins.throw "[npmlock2nix] failed to parse GitHub reference `${str}`. Expected a string of format `url#revision`";
+    rec {
+      inherit parts;
+      url = builtins.elemAt parts 0;
+      rev = builtins.elemAt parts 2;
+      ref = "master";
+    };
+
   # Description: Takes an attribute set describing a git dependency and returns
   # a .tgz of the repository as store path
   # Type: Set -> Path
+  buildTgzFromFetchGit = { name, src }:
+    runCommand
+      name
+      { } ''
+      set +x
+      tar -C ${src} -czf $out ./
+    '';
+
   buildTgzFromGitHub = { name, org, repo, rev, ref }:
     let
       src = builtins.fetchGit {
@@ -42,12 +63,7 @@ rec {
         inherit rev ref;
       };
     in
-    runCommand
-      name
-      { } ''
-      set +x
-      tar -C ${src} -czf $out ./
-    '';
+    buildTgzFromFetchGit { inherit name src; };
 
   # Description: Turns a dependency with a from field of the format
   # `github:org/repo#revision` into a git fetcher
@@ -73,6 +89,24 @@ rec {
       version = "file://" + (toString src);
     };
 
+  makeGitSource = name: dependency:
+    assert !(dependency ? version) ->
+      builtins.throw "Missing `version` attribute missing from `${name}`";
+    if lib.any (x: lib.hasPrefix x dependency.version) ["git+ssh://" "git://"]
+      then
+        let
+          version = parseGitRef dependency.version;
+          src = buildTgzFromFetchGit {
+            name = "${name}.tgz";
+            src = builtins.fetchGit { inherit (version) url rev; };
+          };
+        in
+          (builtins.removeAttrs dependency [ "from" ]) // rec {
+            version = "file://" + (toString src);
+            resolved = version;
+          }
+      else makeGithubSource name dependency;
+
   # Description: Turns an npm lockfile dependency into a fetchurl derivation
   # Type: String -> Set -> Derivation
   makeSource = name: dependency:
@@ -83,7 +117,7 @@ rec {
     if dependency ? resolved && dependency ? integrity then
       dependency // { resolved = "file://" + (toString (fetchurl (makeSourceAttrs name dependency))); }
     else if dependency ? from && dependency ? version then
-      makeGithubSource name dependency
+      makeGitSource name dependency
     else throw "[npmlock2nix] A valid dependency consists of at least the resolved and integrity field. Missing one or both of them for `${name}`. The object I got looks like this: ${builtins.toJSON dependency}";
 
   # Description: Parses the lock file as json and returns an attribute set
@@ -112,14 +146,15 @@ rec {
       inherit (gitAttrs) org repo rev;
     };
 
+  urlNeedRewrite = u: lib.any (scheme: lib.hasPrefix scheme u) ["github:" "git+ssh://" "git://"];
+
   # Description: Patch the `requires` attributes of a dependency spec to refer to paths in the store
   # Type: String -> Set -> Set
   patchRequires = name: requires:
     let
-      patchReq = name: version: if lib.hasPrefix "github:" version then stringToTgzPath name version else version;
+      patchReq = name: version: if urlNeedRewrite version then stringToTgzPath name version else version;
     in
     lib.mapAttrs patchReq requires;
-
 
   # Description: Patches a single lockfile dependency (recursively) by replacing the resolved URL with a store path
   # Type: String -> Set -> Set
@@ -130,7 +165,7 @@ rec {
       throw "[npmlock2nix] pec of dependency ${toString name} must be a set";
     let
       isBundled = spec ? bundled && spec.bundled == true;
-      hasGitHubRequires = spec: (spec ? requires) && (lib.any (x: lib.hasPrefix "github:" x) (lib.attrValues spec.requires));
+      hasGitHubRequires = spec: (spec ? requires) && (lib.any urlNeedRewrite (lib.attrValues spec.requires));
       patchSource = lib.optionalAttrs (!isBundled) (makeSource name spec);
       patchRequiresSources = lib.optionalAttrs (hasGitHubRequires spec) { requires = (patchRequires name spec.requires); };
       patchDependenciesSources = lib.optionalAttrs (spec ? dependencies) { dependencies = lib.mapAttrs patchDependency spec.dependencies; };
