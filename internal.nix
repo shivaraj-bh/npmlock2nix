@@ -265,6 +265,7 @@ rec {
     , nodejs ? default_nodejs
     , preBuild ? ""
     , postBuild ? ""
+    , npmArgs ? "" # Additional arguments for npm install (`--only=prod` for example)
     , preInstallLinks ? { } # set that describes which files should be linked in a specific packages folder
     , ...
     }@args:
@@ -342,7 +343,7 @@ rec {
           declare -pf > $TMP/preinstall-env
           ln -s ${preinstall_node_modules}/node_modules/.hooks/prepare node_modules/.hooks/preinstall
           export HOME=.
-          npm install --offline --nodedir=${nodeSource nodejs}
+          npm install --offline --nodedir=${nodeSource nodejs} ${npmArgs}
           test -d node_modules/.bin && patchShebangs node_modules/.bin
           rm -rf node_modules/.hooks
           runHook postBuild
