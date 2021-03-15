@@ -137,23 +137,26 @@ rec {
 
   # Description: Turns a github string reference into a store path with a tgz of the reference
   # Type: String -> String -> Path
-  stringToTgzPath = name: str:
+  stringToTgzPath = name: dependency:
     let
-      gitAttrs = parseGitHubRef str;
+      v = parseGitHubRef dependency.version;
+      f = parseGitHubRef dependency.from;
     in
     buildTgzFromGitHub {
       name = "${name}.tgz";
-      ref = gitAttrs.rev;
-      inherit (gitAttrs) org repo rev;
+      ref = f.rev; # branch
+      rev = v.rev; # commit hash
+      inherit (v) org repo;
     };
 
   urlNeedRewrite = u: lib.any (scheme: lib.hasPrefix scheme u) ["github:" "git+ssh://" "git://"];
 
   # Description: Patch the `requires` attributes of a dependency spec to refer to paths in the store
   # Type: String -> Set -> Set
-  patchRequires = name: requires:
+  patchRequires = name: dependency:
     let
-      patchReq = name: version: if urlNeedRewrite version then stringToTgzPath name version else version;
+      requires = dependency.requires;
+      patchReq = name: version: if urlNeedRewrite version then stringToTgzPath name dependency else version;
     in
     lib.mapAttrs patchReq requires;
 
@@ -189,16 +192,18 @@ rec {
 
   # Description: Rewrite all the `github:` references to store paths
   # Type: Path -> Set
-  patchPackagefile = file:
+  patchPackagefile = file: lockFile:
     assert (builtins.typeOf file != "path" && builtins.typeOf file != "string") ->
       throw "[npmlock2nix] file ${toString file} must be a path or string";
     let
       # Read the file but also add empty `devDependencies` and `dependencies`
       # if either are missing
       content = builtins.fromJSON (builtins.readFile file);
+      lock = builtins.fromJSON (builtins.readFile lockFile);
       patchDep = (name: version:
         if lib.hasPrefix "github:" version then
-          "file://${stringToTgzPath name version}"
+          let dependency = lock.dependencies.${name}; in
+            "file://${stringToTgzPath name dependency}"
         else version);
       dependencies = if (content ? dependencies) then lib.mapAttrs patchDep content.dependencies else { };
       devDependencies = if (content ? devDependencies) then lib.mapAttrs patchDep content.devDependencies else { };
@@ -207,9 +212,9 @@ rec {
 
   # Description: Takes a Path to a package file and returns the patched version as file in the Nix store
   # Type: Path -> Derivation
-  patchedPackagefile = file: writeText "package.json"
+  patchedPackagefile = file: lock: writeText "package.json"
     (
-      builtins.toJSON (patchPackagefile file)
+      builtins.toJSON (patchPackagefile file lock)
     );
 
   # Description: Takes a Path to a lockfile and returns the patched version as file in the Nix store
@@ -335,7 +340,7 @@ rec {
 
         postPatch = ''
           ln -sf ${patchedLockfile packageLockJson} package-lock.json
-          ln -sf ${patchedPackagefile packageJson} package.json
+          ln -sf ${patchedPackagefile packageJson packageLockJson} package.json
         '';
 
         buildPhase = ''
