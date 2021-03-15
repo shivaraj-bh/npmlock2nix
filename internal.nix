@@ -81,8 +81,9 @@ rec {
     let
       src = buildTgzFromGitHub {
         name = "${name}.tgz";
-        ref = v.rev;
-        inherit (v) org repo rev;
+        ref = f.rev; # branch
+        rev = v.rev; # commit hash
+        inherit (v) org repo;
       };
     in
     (builtins.removeAttrs dependency [ "from" ]) // {
