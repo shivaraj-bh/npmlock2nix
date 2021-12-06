@@ -61,6 +61,7 @@ rec {
       src = builtins.fetchGit {
         url = "https://github.com/${org}/${repo}";
         inherit rev ref;
+        allRefs = true;
       };
     in
     buildTgzFromFetchGit { inherit name src; };
