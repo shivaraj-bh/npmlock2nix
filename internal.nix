@@ -53,19 +53,18 @@ rec {
   isGitRev = str:
     (builtins.match "[0-9a-f]{40}" str) != null;
 
+  gitRefRegex = "git\\+(https://[^#]+)#(.+)";
+
   # Description: Takes a string of the format "git+http(s)://domain.tld/repo#commitish" and returns
   # an attribute set { url, commitish }
   # Type: String -> Set
   parseGitRef =
-    let
-      expression = "git\\+(https://[^#]+)#(.+)";
-    in
     str:
       assert builtins.typeOf str != "string" -> throw "parseGitRef expects a string. Got `${builtins.typeOf str}` with value `${toString str}`";
       let
-        m = builtins.match expression str;
+        m = builtins.match gitRefRegex str;
       in
-      assert m == null || builtins.length m != 2 -> throw "parseGitRef expects a string that matches `${expression}` but was called with `${str}`";
+      assert m == null || builtins.length m != 2 -> throw "parseGitRef expects a string that matches `${gitRefRegex}` but was called with `${str}`";
       {
         url = builtins.elemAt m 0;
         commitish = builtins.elemAt m 1;
@@ -292,7 +291,7 @@ rec {
         # because it only contains the branch name. Therefore we cannot substitute with a nix store path.
         # If we leave the dependency unchanged, npm will try to resolve it and fail. We therefore substitute with a
         # wildcard dependency, which will make npm look at the lockfile.
-        if lib.hasPrefix "github:" version || (builtins.match "git\\+(https://[^#]+)#(.+)" version) != null then
+        if lib.hasPrefix "github:" version || (builtins.match gitRefRegex version) != null then
           "*"
         else version);
       dependencies = if (content ? dependencies) then lib.mapAttrs patchDep content.dependencies else { };
