@@ -53,10 +53,15 @@ rec {
   isGitRev = str:
     (builtins.match "[0-9a-f]{40}" str) != null;
 
-  gitRefRegex = "git\\+(https://[^#]+)#(.+)";
+  gitRefRegex = "(git(\\+(https?|ssh|file))?)://([^#]+)#(.+)";
 
-  # Description: Takes a string of the format "git+http(s)://domain.tld/repo#commitish" and returns
-  # an attribute set { url, commitish }
+  # Description: Takes a string of one the of formats:
+  # * "git+http(s)://domain.tld/repo#commitish"
+  # * "git+ssh://domain.tld/repo#commitish"
+  # * "git+file://domain.tld/repo#commitish"
+  # * "git://domain.tld/repo#commitish"
+  # and returns an attribute set { url, commitish }
+  # (should cover all schemes defined here https://docs.npmjs.com/cli/v8/configuring-npm/package-json#git-urls-as-dependencies)
   # Type: String -> Set
   parseGitRef =
     str:
@@ -64,12 +69,15 @@ rec {
       let
         m = builtins.match gitRefRegex str;
       in
-      assert m == null || builtins.length m != 2 -> throw "parseGitRef expects a string that matches `${gitRefRegex}` but was called with `${str}`";
+      assert m == null || builtins.length m != 5 -> throw "parseGitRef expects a string that matches `${gitRefRegex}` but was called with `${str}`";
+      let
+        loc = builtins.elemAt m 3;
+        gitMethod = builtins.elemAt m 2;
+      in
       {
-        url = builtins.elemAt m 0;
-        commitish = builtins.elemAt m 1;
-      }
-  ;
+        url = "${if gitMethod == null then "git" else gitMethod}://${loc}";
+        commitish = builtins.elemAt m 4;
+      };
 
   # Description: Takes a string of the format "github:org/repo#revision" and returns
   # an attribute set { org, repo, rev }
