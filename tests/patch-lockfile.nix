@@ -7,7 +7,7 @@ testLib.runTests {
   testPatchDependencyHandlesGitHubRefsInRequires = {
     expr =
       let
-        libxmljsUrl = (npmlock2nix.internal.patchDependency noGithubHashes "test" {
+        libxmljsUrl = (npmlock2nix.internal.patchDependency noGithubHashes { } "test" {
           version = "github:tmcw/leftpad#db1442a0556c2b133627ffebf455a78a1ced64b9";
           from = "github:tmcw/leftpad#db1442a0556c2b133627ffebf455a78a1ced64b9";
           integrity = "sha512-8/UvHFG90J4O4QNRzb0jB5Ni1QuvuB7XFTLfDMQnCzAsFemF29VKnNGUESFFcSP/r5WWh/PMe0YRz90+3IqsUA==";
@@ -22,7 +22,7 @@ testLib.runTests {
   };
 
   testBundledDependenciesAreRetained = {
-    expr = npmlock2nix.internal.patchDependency noGithubHashes "test" {
+    expr = npmlock2nix.internal.patchDependency noGithubHashes { } "test" {
       bundled = true;
       integrity = "sha1-hrGk3k+s4YCsVFqD8VA1I9j+0RU=";
       something = "bar";
@@ -42,7 +42,7 @@ testLib.runTests {
   };
 
   testPatchDependencyDoesntDropAttributes = {
-    expr = npmlock2nix.internal.patchDependency noGithubHashes "test" {
+    expr = npmlock2nix.internal.patchDependency noGithubHashes { } "test" {
       a = 1;
       foo = "something";
       resolved = "https://examples.com/something.tgz";
@@ -59,7 +59,7 @@ testLib.runTests {
   };
 
   testPatchDependencyPatchesDependenciesRecursively = {
-    expr = npmlock2nix.internal.patchDependency noGithubHashes "test" {
+    expr = npmlock2nix.internal.patchDependency noGithubHashes { } "test" {
       a = 1;
       foo = "something";
       resolved = "https://examples.com/something.tgz";
