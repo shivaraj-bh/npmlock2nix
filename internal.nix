@@ -53,7 +53,7 @@ rec {
   isGitRev = str:
     (builtins.match "[0-9a-f]{40}" str) != null;
 
-  gitRefRegex = "(git(\\+(https?|ssh|file))?)://([^#]+)#(.+)";
+  gitRefRegex = "(git(\\+(https?|ssh|file))?)://([^#]+)(#(.+))?";
 
   # Description: Takes a string of one the of formats:
   # * "git+http(s)://domain.tld/repo#commitish"
@@ -69,14 +69,14 @@ rec {
       let
         m = builtins.match gitRefRegex str;
       in
-      assert m == null || builtins.length m != 5 -> throw "parseGitRef expects a string that matches `${gitRefRegex}` but was called with `${str}`";
+      assert m == null || builtins.length m != 6 -> throw "parseGitRef expects a string that matches `${gitRefRegex}` but was called with `${str}`";
       let
         loc = builtins.elemAt m 3;
         gitMethod = builtins.elemAt m 2;
       in
       {
         url = "${if gitMethod == null then "git" else gitMethod}://${loc}";
-        commitish = builtins.elemAt m 4;
+        commitish = builtins.elemAt m 5;
       };
 
   # Description: Takes a string of the format "github:org/repo#revision" and returns
@@ -144,7 +144,7 @@ rec {
       src' = fetchGitWrapped {
         url = f.url;
         rev = v.commitish;
-        ref = f.commitish;
+        ref = (if f.commitish != null then f.commitish else "master");
         allRefs = true;
       };
       src = buildTgz "${name}.tgz" src';
