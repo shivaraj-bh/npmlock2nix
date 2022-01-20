@@ -318,7 +318,8 @@ rec {
         # If we leave the dependency unchanged, npm will try to resolve it and fail. We therefore substitute with a
         # wildcard dependency, which will make npm look at the lockfile.
         if lib.hasPrefix "github:" version || (builtins.match gitRefRegex version) != null then
-          "*"
+        #"*"
+          "file://${stringToTgzPath sourceHashFunc name version}"
         else version);
       dependencies = if (content ? dependencies) then lib.mapAttrs patchDep content.dependencies else { };
       devDependencies = if (content ? devDependencies) then lib.mapAttrs patchDep content.devDependencies else { };
