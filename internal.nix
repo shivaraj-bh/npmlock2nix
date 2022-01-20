@@ -179,6 +179,7 @@ rec {
       };
     in
     (builtins.removeAttrs dependency [ "from" ]) // {
+      resolved = "file://" + (toString src);
       version = "file://" + (toString src);
     };
 
