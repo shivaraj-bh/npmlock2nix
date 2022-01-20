@@ -471,8 +471,8 @@ rec {
         '';
 
         postPatch = ''
-          ln -sf ${patchedLockfile (sourceHashFunc githubSourceHashMap) packageLockJson} package-lock.json
-          ln -sf ${patchedPackagefile (sourceHashFunc githubSourceHashMap) packageJson} package.json
+          ln -vsf ${patchedLockfile (sourceHashFunc githubSourceHashMap) packageLockJson} package-lock.json
+          ln -vsf ${patchedPackagefile (sourceHashFunc githubSourceHashMap) packageJson} package.json
         '';
 
         buildPhase = ''
