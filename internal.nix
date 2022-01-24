@@ -317,8 +317,8 @@ rec {
         # If we leave the dependency unchanged, npm will try to resolve it and fail. We therefore substitute with a
         # wildcard dependency, which will make npm look at the lockfile.
         if lib.hasPrefix "github:" version || (builtins.match gitRefRegex version) != null then
-        #"*"
-          "file://${stringToTgzPath sourceHashFunc name version}"
+          "*"
+        # "file://${stringToTgzPath sourceHashFunc name version}"
         else version);
       dependencies = if (content ? dependencies) then lib.mapAttrs patchDep content.dependencies else { };
       devDependencies = if (content ? devDependencies) then lib.mapAttrs patchDep content.devDependencies else { };
@@ -401,6 +401,7 @@ rec {
     , nodejs ? default_nodejs
     , preBuild ? ""
     , postBuild ? ""
+    , npmExecutable ? "npm"
     , npmArgs ? ""
     , preInstallLinks ? { } # set that describes which files should be linked in a specific packages folder
     , githubSourceHashMap ? { }
@@ -483,7 +484,7 @@ rec {
           declare -pf > $TMP/preinstall-env
           ln -s ${preinstall_node_modules}/node_modules/.hooks/prepare node_modules/.hooks/preinstall
           export HOME=.
-          npm install --offline --nodedir=${nodeSource nodejs} ${npmArgs}
+          ${npmExecutable} ci --offline --nodedir=${nodeSource nodejs} ${npmArgs}
           test -d node_modules/.bin && patchShebangs node_modules/.bin
           rm -rf node_modules/.hooks
           runHook postBuild
