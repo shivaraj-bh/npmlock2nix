@@ -55,6 +55,10 @@ rec {
 
   gitRefRegex = "(git(\\+(https?|ssh|file))?)://([^#]+)(#(.+))?";
 
+  isGitURL = url:
+    lib.hasPrefix "github:" url || (builtins.match gitRefRegex url) != null ||
+    (builtins.match "^https?://(github\\.com).+\\.git$" url) != null;
+
   # Description: Takes a string of one the of formats:
   # * "git+http(s)://domain.tld/repo#commitish"
   # * "git+ssh://domain.tld/repo#commitish"
@@ -316,9 +320,8 @@ rec {
         # because it only contains the branch name. Therefore we cannot substitute with a nix store path.
         # If we leave the dependency unchanged, npm will try to resolve it and fail. We therefore substitute with a
         # wildcard dependency, which will make npm look at the lockfile.
-        if lib.hasPrefix "github:" version || (builtins.match gitRefRegex version) != null then
+        if isGitURL version then
           "*"
-        # "file://${stringToTgzPath sourceHashFunc name version}"
         else version);
       dependencies = if (content ? dependencies) then lib.mapAttrs patchDep content.dependencies else { };
       devDependencies = if (content ? devDependencies) then lib.mapAttrs patchDep content.devDependencies else { };
