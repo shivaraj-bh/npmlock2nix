@@ -466,7 +466,7 @@ rec {
         ];
 
         propagatedBuildInputs = [
-          nodejs
+          # nodejs
         ];
 
         setupHooks = [
