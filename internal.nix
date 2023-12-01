@@ -514,7 +514,7 @@ rec {
         '';
 
         passthru = passthru // {
-          inherit nodejs;
+          # inherit nodejs;
           lockfile = patchedLockfile packageLockJson;
           packagesfile = patchedPackagefile packageJson;
         };
