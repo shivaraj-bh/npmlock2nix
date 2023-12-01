@@ -509,6 +509,7 @@ rec {
         postInstall = ''
           set -x
           find $out -type f -exec remove-references-to -t ${nodeSource nodejs} '{}' +
+          find $out -type f -exec remove-references-to -t ${nodejs} '{}' +
           set +x
         '';
 
