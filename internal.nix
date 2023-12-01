@@ -1,4 +1,4 @@
-{ nodejs, stdenv, mkShell, lib, fetchurl, writeText, writeTextFile, runCommand, fetchFromGitHub }:
+{ pkgs, nodejs, stdenv, mkShell, lib, fetchurl, writeText, writeTextFile, runCommand, fetchFromGitHub }:
 rec {
   default_nodejs = nodejs;
 
@@ -461,6 +461,7 @@ rec {
         dontUnpack = true;
 
         nativeBuildInputs = nativeBuildInputs ++ [
+          pkgs.removeReferencesTo
           nodejs
         ];
 
@@ -503,6 +504,12 @@ rec {
               fi
             fi
           fi
+          runHook postInstall
+        '';
+        postInstall = ''
+          set -x
+          find $out -type f -exec remove-references-to -t ${nodeSource nodejs} '{}' +
+          set +x
         '';
 
         passthru = passthru // {
